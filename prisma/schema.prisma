@@ -1,0 +1,113 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model BusinessProfile {
+  id                    String           @id @default(cuid())
+  name                  String
+  googleLocationName    String?
+  websiteUrl            String?
+  phone                 String?
+  industry              String?
+  address               String?
+  reviewUrl             String?
+  detectionSensitivity  Int              @default(65)
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+  reviews               Review[]
+  alerts                Alert[]
+  evidencePackets       EvidencePacket[]
+  googleCredential      GoogleCredential?
+}
+
+model Review {
+  id                  String           @id @default(cuid())
+  businessProfileId   String
+  businessProfile     BusinessProfile  @relation(fields: [businessProfileId], references: [id], onDelete: Cascade)
+  googleReviewId      String?          @unique
+  reviewerName        String
+  reviewerProfileUrl  String?
+  rating              Int
+  comment             String
+  reviewDate          DateTime
+  reply               String?
+  sourceUrl           String?
+  source              String           @default("MANUAL")
+  status              String           @default("NEW")
+  suspicionScore      Int              @default(0)
+  suspicionLevel      String           @default("LOW")
+  analyzedAt          DateTime?
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+  signals             DetectionSignal[]
+  responseDrafts      ResponseDraft[]
+
+  @@index([businessProfileId, reviewDate])
+  @@index([businessProfileId, suspicionScore])
+  @@index([businessProfileId, status])
+}
+
+model DetectionSignal {
+  id          String   @id @default(cuid())
+  reviewId    String
+  review      Review   @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  type        String
+  label       String
+  explanation String
+  weight      Int
+  severity    String   @default("WATCH")
+  createdAt   DateTime @default(now())
+}
+
+model Alert {
+  id                 String          @id @default(cuid())
+  businessProfileId  String
+  businessProfile    BusinessProfile @relation(fields: [businessProfileId], references: [id], onDelete: Cascade)
+  title              String
+  message            String
+  severity           String          @default("INFO")
+  createdAt          DateTime        @default(now())
+  resolvedAt         DateTime?
+
+  @@index([businessProfileId, createdAt])
+}
+
+model ResponseDraft {
+  id        String   @id @default(cuid())
+  reviewId  String
+  review    Review   @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  tone      String   @default("professional")
+  content   String
+  createdAt DateTime @default(now())
+}
+
+model EvidencePacket {
+  id                 String          @id @default(cuid())
+  businessProfileId  String
+  businessProfile    BusinessProfile @relation(fields: [businessProfileId], references: [id], onDelete: Cascade)
+  title              String
+  summary            String
+  reviewIdsJson      String
+  contentHtml        String
+  createdAt          DateTime        @default(now())
+
+  @@index([businessProfileId, createdAt])
+}
+
+model GoogleCredential {
+  id                 String          @id @default(cuid())
+  businessProfileId  String          @unique
+  businessProfile    BusinessProfile @relation(fields: [businessProfileId], references: [id], onDelete: Cascade)
+  accessToken        String
+  refreshToken       String?
+  scope              String?
+  tokenType          String?
+  expiresAt          DateTime?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+}
